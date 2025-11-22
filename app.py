@@ -23,6 +23,7 @@ class CheatsheetApp(QApplication):
         
         # Connect signals
         self.orb.svg_selected.connect(self.open_svg_viewer)
+        self.orb.selection_menu = None  # Will be created by orb
         
         # Show floating orb
         self.orb.show()
@@ -34,6 +35,11 @@ class CheatsheetApp(QApplication):
         
         self.viewer = SVGViewerWindow(svg_path, self.settings)
         self.viewer.viewer_closed.connect(self.on_viewer_closed)
+        
+        # Connect export signal from menu to viewer
+        if self.orb.selection_menu:
+            self.orb.selection_menu.export_requested.connect(self.viewer.export_png_by_path)
+        
         self.viewer.show()
     
     def on_viewer_closed(self):

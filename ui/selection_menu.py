@@ -1,16 +1,20 @@
 """Apple-style selection menu widget for choosing SVG files"""
 from pathlib import Path
+import subprocess
+import sys
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QListWidget, QListWidgetItem,
-                                QLineEdit, QPushButton, QHBoxLayout, QLabel, QTabWidget, QApplication)
+                                QLineEdit, QPushButton, QHBoxLayout, QLabel, QTabWidget, QApplication, QMessageBox)
 from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPen
 from core.settings_manager import SettingsManager
+from ui.list_item_widget import ListItemWidget
 
 
 class SelectionMenu(QWidget):
     """Apple-style menu for selecting SVG cheatsheet files"""
     
     svg_selected = Signal(str)
+    export_requested = Signal(str)  # filepath to export
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -78,47 +82,20 @@ class SelectionMenu(QWidget):
         
         # All files tab
         self.all_list = QListWidget()
-        self.all_list.setIconSize(QSize(20, 20))
-        self.all_list.itemDoubleClicked.connect(self.on_item_double_clicked)
+        self.all_list.setSpacing(2)
         self.tabs.addTab(self.all_list, "All")
         
         # Recent files tab
         self.recent_list = QListWidget()
-        self.recent_list.setIconSize(QSize(20, 20))
-        self.recent_list.itemDoubleClicked.connect(self.on_item_double_clicked)
+        self.recent_list.setSpacing(2)
         self.tabs.addTab(self.recent_list, "Recent")
         
         # Favorites tab
         self.favorites_list = QListWidget()
-        self.favorites_list.setIconSize(QSize(20, 20))
-        self.favorites_list.itemDoubleClicked.connect(self.on_item_double_clicked)
+        self.favorites_list.setSpacing(2)
         self.tabs.addTab(self.favorites_list, "Favorites")
         
         layout.addWidget(self.tabs)
-        
-        # Action buttons
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(8)
-        
-        self.open_button = QPushButton("Open")
-        self.open_button.setObjectName("primaryButton")
-        self.open_button.clicked.connect(self.on_open_clicked)
-        self.open_button.setEnabled(False)
-        button_layout.addWidget(self.open_button)
-        
-        self.favorite_button = QPushButton("★")
-        self.favorite_button.setObjectName("secondaryButton")
-        self.favorite_button.clicked.connect(self.toggle_favorite)
-        self.favorite_button.setEnabled(False)
-        self.favorite_button.setFixedWidth(44)
-        button_layout.addWidget(self.favorite_button)
-        
-        layout.addLayout(button_layout)
-        
-        # Connect list selection
-        self.all_list.itemSelectionChanged.connect(self.on_selection_changed)
-        self.recent_list.itemSelectionChanged.connect(self.on_selection_changed)
-        self.favorites_list.itemSelectionChanged.connect(self.on_selection_changed)
     
     def load_svg_files(self):
         """Load SVG files from directory"""
@@ -134,46 +111,72 @@ class SelectionMenu(QWidget):
         self.populate_lists()
     
     def populate_lists(self):
-        """Populate all list widgets"""
+        """Populate all list widgets with custom widgets"""
         self.all_list.clear()
-        icon = self.create_svg_icon()
         
         for svg_file in self.svg_files:
             display_name = self.format_display_name(svg_file.stem)
-            item = QListWidgetItem(icon, display_name)
-            item.setData(Qt.ItemDataRole.UserRole, str(svg_file))
+            filepath = str(svg_file)
+            is_favorite = self.settings.is_favorite(filepath)
+            
+            # Create custom widget
+            widget = ListItemWidget(filepath, display_name, is_favorite)
+            widget.open_clicked.connect(self.select_svg)
+            widget.favorite_clicked.connect(self.toggle_favorite_by_path)
+            widget.export_clicked.connect(self.export_requested.emit)
+            widget.edit_clicked.connect(self.edit_yaml)
+            
+            # Add to list
+            item = QListWidgetItem(self.all_list)
+            item.setSizeHint(QSize(widget.sizeHint().width(), 48))
             self.all_list.addItem(item)
+            self.all_list.setItemWidget(item, widget)
         
         self.populate_recent()
         self.populate_favorites()
     
     def populate_recent(self):
-        """Populate recent files list"""
+        """Populate recent files list with custom widgets"""
         self.recent_list.clear()
         recent_files = self.settings.get_recent_files()
-        icon = self.create_svg_icon()
         
         for filepath in recent_files:
             path = Path(filepath)
             if path.exists():
                 display_name = self.format_display_name(path.stem)
-                item = QListWidgetItem(icon, display_name)
-                item.setData(Qt.ItemDataRole.UserRole, filepath)
+                is_favorite = self.settings.is_favorite(filepath)
+                
+                widget = ListItemWidget(filepath, display_name, is_favorite)
+                widget.open_clicked.connect(self.select_svg)
+                widget.favorite_clicked.connect(self.toggle_favorite_by_path)
+                widget.export_clicked.connect(self.export_requested.emit)
+                widget.edit_clicked.connect(self.edit_yaml)
+                
+                item = QListWidgetItem(self.recent_list)
+                item.setSizeHint(QSize(widget.sizeHint().width(), 48))
                 self.recent_list.addItem(item)
+                self.recent_list.setItemWidget(item, widget)
     
     def populate_favorites(self):
-        """Populate favorites list"""
+        """Populate favorites list with custom widgets"""
         self.favorites_list.clear()
         favorites = self.settings.get_favorites()
-        icon = self.create_svg_icon(True)
         
         for filepath in favorites:
             path = Path(filepath)
             if path.exists():
                 display_name = self.format_display_name(path.stem)
-                item = QListWidgetItem(icon, display_name)
-                item.setData(Qt.ItemDataRole.UserRole, filepath)
+                
+                widget = ListItemWidget(filepath, display_name, True)
+                widget.open_clicked.connect(self.select_svg)
+                widget.favorite_clicked.connect(self.toggle_favorite_by_path)
+                widget.export_clicked.connect(self.export_requested.emit)
+                widget.edit_clicked.connect(self.edit_yaml)
+                
+                item = QListWidgetItem(self.favorites_list)
+                item.setSizeHint(QSize(widget.sizeHint().width(), 48))
                 self.favorites_list.addItem(item)
+                self.favorites_list.setItemWidget(item, widget)
     
     def create_svg_icon(self, is_favorite=False):
         """Create an icon for SVG items"""
@@ -231,55 +234,42 @@ class SelectionMenu(QWidget):
             item = self.all_list.item(i)
             item.setHidden(text not in item.text().lower())
     
-    def on_selection_changed(self):
-        """Handle selection change in any list"""
-        current_list = self.tabs.currentWidget()
-        has_selection = len(current_list.selectedItems()) > 0
+    def toggle_favorite_by_path(self, filepath):
+        """Toggle favorite status by filepath"""
+        if self.settings.is_favorite(filepath):
+            self.settings.remove_favorite(filepath)
+        else:
+            self.settings.add_favorite(filepath)
         
-        self.open_button.setEnabled(has_selection)
-        self.favorite_button.setEnabled(has_selection)
+        # Refresh all lists to update UI
+        self.populate_lists()
+    
+    def edit_yaml(self, filepath):
+        """Open corresponding YAML file in default editor"""
+        svg_path = Path(filepath)
+        # Assuming YAML files are in src/doc with same stem
+        yaml_path = Path("./src/doc") / f"{svg_path.stem}.yaml"
         
-        if has_selection:
-            filepath = current_list.selectedItems()[0].data(Qt.ItemDataRole.UserRole)
-            if self.settings.is_favorite(filepath):
-                self.favorite_button.setText("★")
+        if not yaml_path.exists():
+            QMessageBox.warning(self, "File Not Found",
+                              f"YAML file not found:\n{yaml_path}")
+            return
+        
+        try:
+            if sys.platform == "win32":
+                subprocess.Popen(["notepad.exe", str(yaml_path)])
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(yaml_path)])
             else:
-                self.favorite_button.setText("☆")
-    
-    def on_item_double_clicked(self, item):
-        """Handle double click on item"""
-        filepath = item.data(Qt.ItemDataRole.UserRole)
-        self.select_svg(filepath)
-    
-    def on_open_clicked(self):
-        """Handle open button click"""
-        current_list = self.tabs.currentWidget()
-        selected_items = current_list.selectedItems()
-        
-        if selected_items:
-            filepath = selected_items[0].data(Qt.ItemDataRole.UserRole)
-            self.select_svg(filepath)
+                subprocess.Popen(["xdg-open", str(yaml_path)])
+        except Exception as e:
+            QMessageBox.critical(self, "Error",
+                               f"Failed to open YAML file:\n{str(e)}")
     
     def select_svg(self, filepath):
         """Emit selected SVG and add to recent"""
         self.settings.add_recent_file(filepath)
         self.svg_selected.emit(filepath)
-    
-    def toggle_favorite(self):
-        """Toggle favorite status of selected item"""
-        current_list = self.tabs.currentWidget()
-        selected_items = current_list.selectedItems()
-        
-        if selected_items:
-            filepath = selected_items[0].data(Qt.ItemDataRole.UserRole)
-            
-            if self.settings.is_favorite(filepath):
-                self.settings.remove_favorite(filepath)
-            else:
-                self.settings.add_favorite(filepath)
-            
-            self.populate_favorites()
-            self.on_selection_changed()
     
     def quit_app(self):
         """Quit the entire application"""
@@ -358,10 +348,19 @@ class SelectionMenu(QWidget):
                     outline: none;
                 }
                 QListWidget::item {
-                    padding: 12px;
+                    padding: 0px;
                     border-radius: 8px;
-                    margin: 2px 0px;
+                    margin: 0px;
                     outline: none;
+                    background-color: transparent;
+                }
+                QPushButton#iconButton {
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 6px;
+                }
+                QPushButton#iconButton:hover {
+                    background-color: rgba(58, 58, 60, 0.5);
                 }
                 QListWidget::item:focus {
                     outline: none;
@@ -370,8 +369,7 @@ class SelectionMenu(QWidget):
                     background-color: rgba(58, 58, 60, 0.5);
                 }
                 QListWidget::item:selected {
-                    background-color: #007aff;
-                    color: #ffffff;
+                    background-color: transparent;
                 }
                 QPushButton#primaryButton {
                     padding: 11px 20px;
@@ -482,10 +480,19 @@ class SelectionMenu(QWidget):
                     outline: none;
                 }
                 QListWidget::item {
-                    padding: 12px;
+                    padding: 0px;
                     border-radius: 8px;
-                    margin: 2px 0px;
+                    margin: 0px;
                     outline: none;
+                    background-color: transparent;
+                }
+                QPushButton#iconButton {
+                    background-color: transparent;
+                    border: none;
+                    border-radius: 6px;
+                }
+                QPushButton#iconButton:hover {
+                    background-color: rgba(229, 229, 234, 0.6);
                 }
                 QListWidget::item:focus {
                     outline: none;
@@ -494,8 +501,7 @@ class SelectionMenu(QWidget):
                     background-color: rgba(242, 242, 247, 0.7);
                 }
                 QListWidget::item:selected {
-                    background-color: #007aff;
-                    color: #ffffff;
+                    background-color: transparent;
                 }
                 QPushButton#primaryButton {
                     padding: 11px 20px;
