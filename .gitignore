@@ -2,3 +2,4 @@
 /src/image/*
 /src/svg/*
 
+__pycache__

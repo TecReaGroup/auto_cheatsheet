@@ -43,10 +43,15 @@ def generate_svg(data, output_file, console_width=100):
 
 
 def post_process_svg(svg_file, line_width=1060, margin=25):
-    """Replace dashed lines with solid SVG lines"""
+    """Replace dashed lines with solid SVG lines and center section titles"""
     with open(svg_file, "r", encoding="utf-8") as f:
         svg_content = f.read()
     
+    # Extract viewBox width for centering calculations
+    viewbox_match = re.search(r'viewBox="0 0 (\d+(?:\.\d+)?)', svg_content)
+    svg_width = float(viewbox_match.group(1)) if viewbox_match else 1238
+    
+    # Replace dashed lines with solid SVG lines
     pattern = r'<text class="([^"]*)" x="([^"]+)" y="([^"]+)"[^>]*>&#160;(─+)&#160;</text>'
     
     def replace_with_line(match):
@@ -55,6 +60,28 @@ def post_process_svg(svg_file, line_width=1060, margin=25):
         return f'<line x1="{x + margin}" y1="{y-5}" x2="{x + line_width + margin}" y2="{y-5}" stroke="#c5c8c6" stroke-width="1.5"/>'
     
     svg_content = re.sub(pattern, replace_with_line, svg_content)
+    
+    # Center section titles (italic text with padding spaces)
+    title_pattern = r'<text class="([^"]*-r2)" x="([^"]+)" y="([^"]+)"[^>]*>&#160;+([^<]+?)&#160;+</text>'
+    
+    def center_title(match):
+        css_class = match.group(1)
+        y = match.group(3)
+        title_text = match.group(4)
+        
+        # Remove any remaining &#160; entities and strip
+        clean_title = title_text.replace('&#160;', ' ').strip()
+        
+        # Calculate character width (approximate for monospace font at 20px)
+        char_width = 12.2
+        title_width = len(clean_title) * char_width
+        
+        # Calculate centered x position
+        centered_x = (svg_width - title_width) / 2
+        
+        return f'<text class="{css_class}" x="{centered_x:.1f}" y="{y}" textLength="{title_width}">{clean_title}</text>'
+    
+    svg_content = re.sub(title_pattern, center_title, svg_content)
     
     with open(svg_file, "w", encoding="utf-8") as f:
         f.write(svg_content)

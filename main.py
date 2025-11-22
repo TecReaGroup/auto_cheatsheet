@@ -1,7 +1,7 @@
 """Main controller for cheatsheet generation"""
 import yaml
-from svg_processor import generate_svg, post_process_svg
-from svg_to_png import convert_svg_to_png
+from script.svg_processor import generate_svg, post_process_svg
+from script.svg_to_png import convert_svg_to_png
 from pathlib import Path
 
 
