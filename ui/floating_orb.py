@@ -1,8 +1,9 @@
 """Floating orb widget - Main entry point"""
 from PySide6.QtWidgets import QWidget
-from PySide6.QtCore import Qt, QPoint, Signal, QPropertyAnimation, QEasingCurve, Property
-from PySide6.QtGui import QPainter, QColor, QPen
+from PySide6.QtCore import Qt, QPoint, Signal, QPropertyAnimation, QEasingCurve, Property, QRect
+from PySide6.QtGui import QPainter, QColor
 from ui.selection_menu import SelectionMenu
+from ui.icon_manager import IconManager
 from core.settings_manager import SettingsManager
 
 
@@ -74,25 +75,16 @@ class FloatingOrb(QWidget):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(offset, offset, size, size)
         
-        # Minimalist document icon
-        painter.setPen(QPen(QColor(255, 255, 255), 1.5))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        
-        icon_size = size // 2.5
-        icon_x = 40 - icon_size // 2
-        icon_y = 40 - icon_size // 2
-        
-        # Simple document shape
-        painter.drawRoundedRect(int(icon_x), int(icon_y), int(icon_size), int(icon_size), 2, 2)
-        
-        # Minimalist lines (fewer, cleaner)
-        line_margin = icon_size * 0.25
-        line_y1 = icon_y + icon_size * 0.35
-        line_y2 = icon_y + icon_size * 0.65
-        painter.drawLine(int(icon_x + line_margin), int(line_y1),
-                        int(icon_x + icon_size - line_margin), int(line_y1))
-        painter.drawLine(int(icon_x + line_margin), int(line_y2),
-                        int(icon_x + icon_size - line_margin), int(line_y2))
+        # Draw document icon using QtAwesome
+        icon = IconManager.get_orb_document_icon(color=IconManager.WHITE)
+        icon_size = int(size // 2.2)
+        icon_rect = QRect(
+            40 - icon_size // 2,
+            40 - icon_size // 2,
+            icon_size,
+            icon_size
+        )
+        icon.paint(painter, icon_rect)
     
     def enterEvent(self, event):
         """Mouse enter event"""

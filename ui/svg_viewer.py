@@ -4,8 +4,9 @@ import sys
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QScrollArea, QFileDialog,
                                 QMessageBox)
 from PySide6.QtCore import Qt, QSize, QTimer, Signal
-from PySide6.QtGui import QAction, QKeySequence, QPixmap, QPainter, QIcon, QColor, QPalette
+from PySide6.QtGui import QAction, QKeySequence, QPixmap, QPainter, QColor, QPalette
 from PySide6.QtSvgWidgets import QSvgWidget
+from ui.icon_manager import IconManager
 
 # Windows dark title bar support
 if sys.platform == 'win32':
@@ -104,32 +105,8 @@ class SVGViewerWindow(QMainWindow):
         pass
     
     def set_window_icon(self):
-        """Create and set window icon matching the orb"""
-        from PySide6.QtGui import QPen
-        
-        pixmap = QPixmap(64, 64)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
-        # Draw orb
-        painter.setBrush(QColor(0, 122, 255))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(2, 2, 60, 60)
-        
-        # Draw document icon
-        painter.setPen(QPen(QColor(255, 255, 255), 1.5))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(22, 22, 20, 20, 2, 2)
-        
-        # Draw lines
-        painter.drawLine(26, 28, 38, 28)
-        painter.drawLine(26, 35, 38, 35)
-        
-        painter.end()
-        
-        self.setWindowIcon(QIcon(pixmap))
+        """Set window icon using QtAwesome"""
+        self.setWindowIcon(IconManager.get_window_icon())
     
     def apply_windows_dark_titlebar(self):
         """Apply dark title bar on Windows 10/11"""

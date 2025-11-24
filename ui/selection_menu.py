@@ -5,9 +5,9 @@ import sys
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QListWidget, QListWidgetItem,
                                 QLineEdit, QPushButton, QHBoxLayout, QLabel, QTabWidget, QApplication, QMessageBox)
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPen
 from core.settings_manager import SettingsManager
 from ui.list_item_widget import ListItemWidget
+from ui.icon_manager import IconManager
 
 
 class SelectionMenu(QWidget):
@@ -61,8 +61,8 @@ class SelectionMenu(QWidget):
         quit_button = QPushButton()
         quit_button.setObjectName("quitButton")
         quit_button.setFixedSize(32, 32)
-        quit_button.setIcon(self.create_close_icon())
-        quit_button.setIconSize(QSize(14, 14))
+        quit_button.setIcon(IconManager.get_close_icon())
+        quit_button.setIconSize(QSize(16, 16))
         quit_button.clicked.connect(self.quit_app)
         quit_button.setToolTip("Quit Application")
         title_layout.addWidget(quit_button, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
@@ -177,50 +177,6 @@ class SelectionMenu(QWidget):
                 item.setSizeHint(QSize(widget.sizeHint().width(), 48))
                 self.favorites_list.addItem(item)
                 self.favorites_list.setItemWidget(item, widget)
-    
-    def create_svg_icon(self, is_favorite=False):
-        """Create an icon for SVG items"""
-        pixmap = QPixmap(20, 20)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
-        if is_favorite:
-            color = QColor(255, 204, 0)  # Gold
-        else:
-            color = QColor(0, 122, 255)  # Apple blue
-        
-        painter.setBrush(color)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRoundedRect(3, 2, 14, 16, 2, 2)
-        
-        painter.setPen(QColor(255, 255, 255))
-        for i in range(2):
-            y = 7 + i * 5
-            painter.drawLine(6, y, 14, y)
-        
-        painter.end()
-        return QIcon(pixmap)
-    
-    def create_close_icon(self):
-        """Create a close (X) icon"""
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
-        pen = QPen(QColor(142, 142, 147), 1.5)  # #8e8e93
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        painter.setPen(pen)
-        
-        # Draw X
-        painter.drawLine(4, 4, 12, 12)
-        painter.drawLine(12, 4, 4, 12)
-        
-        painter.end()
-        return QIcon(pixmap)
     
     def format_display_name(self, filename):
         """Format filename for display"""
