@@ -4,7 +4,7 @@ import subprocess
 import sys
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QListWidget, QListWidgetItem,
                                 QLineEdit, QPushButton, QHBoxLayout, QLabel, QTabWidget, QApplication, QMessageBox)
-from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtCore import Qt, Signal, QSize, QPoint
 from core.settings_manager import SettingsManager
 from ui.list_item_widget import ListItemWidget
 from ui.icon_manager import IconManager
@@ -15,6 +15,7 @@ class SelectionMenu(QWidget):
     
     svg_selected = Signal(str)
     export_requested = Signal(str)  # filepath to export
+    menu_dragged = Signal(QPoint)  # Emitted when menu is dragged, contains delta movement
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -22,6 +23,11 @@ class SelectionMenu(QWidget):
         self.svg_dir = Path("./src/svg")
         self.svg_files = []
         self._lists_populated = False
+        
+        # Dragging state
+        self.drag_position = None
+        self.is_dragging = False
+        self.drag_start_pos = None
         
         self.setup_ui()
         self.apply_theme()
@@ -290,6 +296,103 @@ class SelectionMenu(QWidget):
         """Emit selected SVG and add to recent"""
         self.settings.add_recent_file(filepath)
         self.svg_selected.emit(filepath)
+    
+    def mousePressEvent(self, event):
+        """Handle mouse press for dragging"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            # Only allow dragging from title bar area (top ~50px)
+            if event.position().y() < 60:
+                self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+                self.drag_start_pos = event.globalPosition().toPoint()
+                self.is_dragging = False
+                event.accept()
+                return
+        super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event):
+        """Handle mouse move for dragging"""
+        if event.buttons() == Qt.MouseButton.LeftButton and self.drag_position is not None:
+            from PySide6.QtGui import QGuiApplication
+            
+            current_pos = event.globalPosition().toPoint()
+            
+            # Start dragging if moved more than 5 pixels
+            if not self.is_dragging:
+                move_distance = (current_pos - self.drag_start_pos).manhattanLength()
+                if move_distance > 5:
+                    self.is_dragging = True
+            
+            if self.is_dragging:
+                # Calculate desired new position
+                desired_pos = current_pos - self.drag_position
+                old_pos = self.pos()
+                delta = desired_pos - old_pos
+                
+                # Check if the orb (parent) can move by this delta
+                if self.parent():
+                    orb_new_pos = self.parent().pos() + delta
+                    screen = QGuiApplication.primaryScreen().geometry()
+                    half_width = self.parent().width() // 2
+                    half_height = self.parent().height() // 2
+                    
+                    # Calculate constrained orb position
+                    orb_x = orb_new_pos.x()
+                    orb_y = orb_new_pos.y()
+                    
+                    if orb_x < screen.left() - half_width:
+                        orb_x = screen.left() - half_width
+                    elif orb_x + self.parent().width() > screen.right() + half_width:
+                        orb_x = screen.right() + half_width - self.parent().width()
+                    
+                    if orb_y < screen.top() - half_height:
+                        orb_y = screen.top() - half_height
+                    elif orb_y + self.parent().height() > screen.bottom() + half_height:
+                        orb_y = screen.bottom() + half_height - self.parent().height()
+                    
+                    # Calculate actual delta the orb can move
+                    constrained_orb_pos = QPoint(orb_x, orb_y)
+                    actual_orb_delta = constrained_orb_pos - self.parent().pos()
+                    
+                    # Only move menu by the amount orb can actually move
+                    constrained_menu_pos = old_pos + actual_orb_delta
+                else:
+                    # No parent, use simple screen constraint
+                    screen = QGuiApplication.primaryScreen().geometry()
+                    x = desired_pos.x()
+                    y = desired_pos.y()
+                    
+                    if x < screen.left():
+                        x = screen.left()
+                    if x + self.width() > screen.right():
+                        x = screen.right() - self.width()
+                    if y < screen.top():
+                        y = screen.top()
+                    if y + self.height() > screen.bottom():
+                        y = screen.bottom() - self.height()
+                    
+                    constrained_menu_pos = QPoint(x, y)
+                
+                # Only move if position actually changed
+                if constrained_menu_pos != old_pos:
+                    self.move(constrained_menu_pos)
+                    
+                    # Calculate actual delta and emit signal for orb to follow
+                    actual_delta = constrained_menu_pos - old_pos
+                    self.menu_dragged.emit(actual_delta)
+                
+                event.accept()
+                return
+        super().mouseMoveEvent(event)
+    
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.drag_position = None
+            self.is_dragging = False
+            self.drag_start_pos = None
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
     
     def quit_app(self):
         """Quit the entire application"""

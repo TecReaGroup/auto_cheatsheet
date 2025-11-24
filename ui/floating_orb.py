@@ -22,6 +22,7 @@ class FloatingOrb(QWidget):
         self.selection_menu = None
         self._hover = False
         self._scale = 1.0
+        self._menu_drag_in_progress = False
         
         self.setup_ui()
         self.load_position()
@@ -242,6 +243,7 @@ class FloatingOrb(QWidget):
             if not self.selection_menu:
                 self.selection_menu = SelectionMenu(self)
                 self.selection_menu.svg_selected.connect(self.on_svg_selected)
+                self.selection_menu.menu_dragged.connect(self.on_menu_dragged)
                 self.menu_created.emit()  # Notify app that menu was created
             
             self.update_menu_position()
@@ -281,6 +283,21 @@ class FloatingOrb(QWidget):
             menu_y = screen.top() + 5
         
         self.selection_menu.move(menu_x, menu_y)
+    
+    def on_menu_dragged(self, delta):
+        """Handle menu drag - move orb synchronously (menu has already checked boundaries)"""
+        # Prevent recursive updates
+        if self._menu_drag_in_progress:
+            return
+        
+        self._menu_drag_in_progress = True
+        
+        try:
+            # Menu has already calculated the safe delta, just apply it
+            new_orb_pos = self.pos() + delta
+            self.move(new_orb_pos)
+        finally:
+            self._menu_drag_in_progress = False
     
     def on_svg_selected(self, svg_path):
         """Handle SVG selection"""
