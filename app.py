@@ -4,7 +4,12 @@ from PySide6.QtWidgets import QApplication
 from ui.floating_orb import FloatingOrb
 from ui.svg_viewer import SVGViewerWindow
 from core.settings_manager import SettingsManager
+import signal
 
+# Gracefully handle SIGINT (Ctrl+C) to quit the application
+def quit_app():
+    QApplication.quit()
+signal.signal(signal.SIGINT, lambda sig, frame: QApplication.quit())
 
 class CheatsheetApp(QApplication):
     """Main application class"""
