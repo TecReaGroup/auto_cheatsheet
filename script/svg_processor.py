@@ -43,13 +43,25 @@ def generate_svg(data, output_file, console_width=100):
 
 
 def post_process_svg(svg_file, line_width=1060, margin=25):
-    """Replace dashed lines with solid SVG lines and center section titles"""
+    """Replace dashed lines with solid SVG lines, center section titles, and adjust terminal title size"""
     with open(svg_file, "r", encoding="utf-8") as f:
         svg_content = f.read()
     
     # Extract viewBox width for centering calculations
     viewbox_match = re.search(r'viewBox="0 0 (\d+(?:\.\d+)?)', svg_content)
     svg_width = float(viewbox_match.group(1)) if viewbox_match else 1238
+    
+    # Change terminal title font size in CSS
+    title_font_pattern = r'(\.terminal-\d+-title\s*\{[^}]*font-size:\s*)18px'
+    svg_content = re.sub(title_font_pattern, r'\g<1>20px', svg_content)
+    
+    # Add inline font-size attribute to title text element for Qt compatibility
+    title_text_pattern = r'(<text class="terminal-\d+-title"[^>]*?)>'
+    svg_content = re.sub(title_text_pattern, r'\1 font-size="20">', svg_content)
+    
+    # Add spacing below terminal title by adjusting content group position
+    content_group_pattern = r'(<g transform="translate\(9,\s*)(\d+)(\)"\s+clip-path)'
+    svg_content = re.sub(content_group_pattern, lambda m: f'{m.group(1)}{int(m.group(2)) + 15}{m.group(3)}', svg_content)
     
     # Replace dashed lines with solid SVG lines
     pattern = r'<text class="([^"]*)" x="([^"]+)" y="([^"]+)"[^>]*>&#160;(─+)&#160;</text>'
