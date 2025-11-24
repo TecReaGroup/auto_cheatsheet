@@ -400,6 +400,9 @@ class SelectionMenu(QWidget):
     def select_svg(self, filepath):
         """Emit selected SVG and add to recent"""
         self.settings.add_recent_file(filepath)
+        # Refresh recent list to show updated order
+        if self._lists_populated:
+            self.populate_recent()
         self.svg_selected.emit(filepath)
     
     def mousePressEvent(self, event):

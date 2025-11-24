@@ -1,15 +1,14 @@
 """PySide6 Cheatsheet Viewer Application - Main Entry Point"""
 import sys
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer
 from ui.floating_orb import FloatingOrb
 from ui.svg_viewer import SVGViewerWindow
 from core.settings_manager import SettingsManager
 import signal
 
 # Gracefully handle SIGINT (Ctrl+C) to quit the application
-def quit_app():
-    QApplication.quit()
-signal.signal(signal.SIGINT, lambda sig, frame: QApplication.quit())
+signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 class CheatsheetApp(QApplication):
     """Main application class"""
@@ -35,6 +34,11 @@ class CheatsheetApp(QApplication):
         
         # Show floating orb
         self.orb.show()
+        
+        # Setup timer to allow Python signal handlers to run
+        self.timer = QTimer()
+        self.timer.timeout.connect(lambda: None)
+        self.timer.start(100)
     
     def generate_svgs_on_startup(self):
         """Generate SVGs on application startup"""

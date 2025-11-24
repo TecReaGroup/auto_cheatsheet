@@ -56,9 +56,10 @@ class ListItemWidget(QWidget):
                 margin: 0px;
             }
         """)
-        self.name_label.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.name_label.mousePressEvent = self.handle_label_click
         layout.addWidget(self.name_label, 1, Qt.AlignmentFlag.AlignVCenter)
+        
+        # Make entire widget clickable
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         
         # Favorite button
         self.favorite_btn = QPushButton()
@@ -129,10 +130,16 @@ class ListItemWidget(QWidget):
         # Show menu at button position
         menu.exec(self.expand_btn.mapToGlobal(self.expand_btn.rect().bottomLeft()))
     
-    def handle_label_click(self, event):
-        """Handle label click and prevent event propagation"""
-        event.accept()
-        self.open_clicked.emit(self.filepath)
+    def mousePressEvent(self, event):
+        """Handle click on entire widget"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            # Check if click is on a button (they handle their own clicks)
+            widget_at_pos = self.childAt(event.pos())
+            if widget_at_pos not in [self.favorite_btn, self.expand_btn]:
+                event.accept()
+                self.open_clicked.emit(self.filepath)
+                return
+        super().mousePressEvent(event)
     
     def set_favorite(self, is_favorite):
         """Update favorite status"""
