@@ -1,6 +1,6 @@
 """Floating orb widget - Main entry point"""
 from PySide6.QtWidgets import QWidget, QMenu, QApplication
-from PySide6.QtCore import Qt, QPoint, Signal, QPropertyAnimation, QEasingCurve, Property, QRect
+from PySide6.QtCore import Qt, QPoint, Signal, QPropertyAnimation, QEasingCurve, Property, QRect, QTimer
 from PySide6.QtGui import QPainter, QColor
 from ui.selection_menu import SelectionMenu
 from ui.icon_manager import IconManager
@@ -26,6 +26,9 @@ class FloatingOrb(QWidget):
         
         self.setup_ui()
         self.load_position()
+        
+        # Pre-create menu after a short delay to improve first-click performance
+        QTimer.singleShot(100, self._precreate_menu)
     
     def setup_ui(self):
         """Setup UI elements"""
@@ -239,19 +242,38 @@ class FloatingOrb(QWidget):
         animation.start()
         self._position_animation = animation  # Keep reference
     
+    def _precreate_menu(self):
+        """Pre-create and pre-render menu in background to improve first-click performance"""
+        if not self.selection_menu:
+            self.selection_menu = SelectionMenu(self)
+            self.selection_menu.svg_selected.connect(self.on_svg_selected)
+            self.selection_menu.menu_dragged.connect(self.on_menu_dragged)
+            self.menu_created.emit()
+            
+            # Pre-render by showing invisibly to avoid first-show delay
+            self.selection_menu.setWindowOpacity(0)
+            self.update_menu_position()
+            self.selection_menu.show()
+            # Hide and restore opacity after initial render
+            QTimer.singleShot(50, lambda: (self.selection_menu.hide(), self.selection_menu.setWindowOpacity(1.0)))
+    
     def toggle_selection_menu(self):
         """Toggle SVG selection menu visibility"""
         if self.selection_menu and self.selection_menu.isVisible():
             self.selection_menu.close()
         else:
             if not self.selection_menu:
-                self.selection_menu = SelectionMenu(self)
-                self.selection_menu.svg_selected.connect(self.on_svg_selected)
-                self.selection_menu.menu_dragged.connect(self.on_menu_dragged)
-                self.menu_created.emit()  # Notify app that menu was created
+                # Menu not pre-created (shouldn't happen), create and defer show
+                self._precreate_menu()
+                QTimer.singleShot(60, self._show_menu)
+                return
             
-            self.update_menu_position()
-            self.selection_menu.show()
+            self._show_menu()
+    
+    def _show_menu(self):
+        """Show the menu"""
+        self.update_menu_position()
+        self.selection_menu.show()
     
     def update_menu_position(self):
         """Update menu position relative to orb with screen boundary checks"""

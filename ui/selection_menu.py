@@ -34,7 +34,6 @@ class SelectionMenu(QWidget):
         
         self.setup_ui()
         self.apply_theme()
-        # Defer expensive list population until after menu is shown
         self.load_svg_files()
     
     def setup_ui(self):
@@ -266,11 +265,13 @@ class SelectionMenu(QWidget):
                 item.setHidden(text not in display_name)
     
     def showEvent(self, event):
-        """Populate lists when menu is first shown"""
+        """Populate lists asynchronously after menu is shown"""
         super().showEvent(event)
         if not self._lists_populated:
             self._lists_populated = True
-            self.populate_lists()
+            # Populate lists in next event loop iteration to avoid blocking show()
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, self.populate_lists)
     
     def toggle_favorite_by_path(self, filepath):
         """Toggle favorite status by filepath"""
