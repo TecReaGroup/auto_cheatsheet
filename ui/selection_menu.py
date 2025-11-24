@@ -10,6 +10,7 @@ from ui.list_item_widget import ListItemWidget
 from ui.icon_manager import IconManager
 from ui.settings_dialog import SettingsDialog
 from ui.add_cheatsheet_dialog import AddCheatsheetDialog
+from ui.delete_confirmation_dialog import DeleteConfirmationDialog
 
 
 class SelectionMenu(QWidget):
@@ -167,6 +168,7 @@ class SelectionMenu(QWidget):
             widget.favorite_clicked.connect(self.toggle_favorite_by_path)
             widget.export_clicked.connect(lambda fp=filepath: self.handle_export(fp))
             widget.edit_clicked.connect(self.edit_yaml)
+            widget.delete_clicked.connect(self.delete_cheatsheet)
             
             item = QListWidgetItem(self.all_list)
             item.setSizeHint(fixed_size)
@@ -200,6 +202,7 @@ class SelectionMenu(QWidget):
                 widget.favorite_clicked.connect(self.toggle_favorite_by_path)
                 widget.export_clicked.connect(lambda fp=filepath: self.handle_export(fp))
                 widget.edit_clicked.connect(self.edit_yaml)
+                widget.delete_clicked.connect(self.delete_cheatsheet)
                 
                 item = QListWidgetItem(self.recent_list)
                 item.setSizeHint(fixed_size)
@@ -228,6 +231,7 @@ class SelectionMenu(QWidget):
                 widget.favorite_clicked.connect(self.toggle_favorite_by_path)
                 widget.export_clicked.connect(lambda fp=filepath: self.handle_export(fp))
                 widget.edit_clicked.connect(self.edit_yaml)
+                widget.delete_clicked.connect(self.delete_cheatsheet)
                 
                 item = QListWidgetItem(self.favorites_list)
                 item.setSizeHint(fixed_size)
@@ -335,6 +339,37 @@ class SelectionMenu(QWidget):
             self.refresh_lists()
         except Exception as e:
             print(f"Error regenerating SVGs: {e}")
+    
+    def delete_cheatsheet(self, filepath):
+        """Delete cheatsheet YAML and SVG files with confirmation"""
+        svg_path = Path(filepath)
+        yaml_path = Path("./src/doc") / f"{svg_path.stem}.yaml"
+        
+        # Show custom confirmation dialog
+        dialog = DeleteConfirmationDialog(self.format_display_name(svg_path.stem), self)
+        
+        if dialog.exec():
+            try:
+                # Delete YAML file
+                if yaml_path.exists():
+                    yaml_path.unlink()
+                
+                # Delete SVG file
+                if svg_path.exists():
+                    svg_path.unlink()
+                
+                # Remove from favorites and recent
+                self.settings.remove_favorite(filepath)
+                recent_files = self.settings.get_recent_files()
+                if filepath in recent_files:
+                    recent_files.remove(filepath)
+                    self.settings.settings.setValue("recent_files", recent_files)
+                
+                # Refresh lists
+                self.refresh_lists()
+                
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to delete files:\n{str(e)}")
     
     def open_settings(self):
         """Open settings dialog"""

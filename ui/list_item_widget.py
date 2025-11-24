@@ -11,6 +11,7 @@ class ListItemWidget(QWidget):
     favorite_clicked = Signal(str)  # filepath
     export_clicked = Signal(str)  # filepath
     edit_clicked = Signal(str)  # filepath
+    delete_clicked = Signal(str)  # filepath
     
     def __init__(self, filepath, display_name, is_favorite=False, parent=None):
         super().__init__(parent)
@@ -117,6 +118,13 @@ class ListItemWidget(QWidget):
         # Edit YAML action
         edit_action = menu.addAction("Edit YAML")
         edit_action.triggered.connect(lambda: self.edit_clicked.emit(self.filepath))
+        
+        # Separator
+        menu.addSeparator()
+        
+        # Delete action
+        delete_action = menu.addAction("Delete")
+        delete_action.triggered.connect(lambda: self.delete_clicked.emit(self.filepath))
         
         # Show menu at button position
         menu.exec(self.expand_btn.mapToGlobal(self.expand_btn.rect().bottomLeft()))

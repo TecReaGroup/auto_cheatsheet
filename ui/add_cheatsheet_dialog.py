@@ -76,7 +76,7 @@ class AddCheatsheetDialog(QDialog):
         layout.addWidget(title)
         
         # Command input
-        input_label = QLabel("Command/Tool Name:")
+        input_label = QLabel("Command / Tool Name:")
         input_label.setObjectName("fieldLabel")
         layout.addWidget(input_label)
         

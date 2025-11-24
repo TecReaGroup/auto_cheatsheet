@@ -45,6 +45,7 @@ class FloatingOrb(QWidget):
         """Load saved position"""
         x, y = self.settings.get_orb_position()
         self.move(x, y)
+        self.snap_to_edge()
     
     def save_position(self):
         """Save current position"""
