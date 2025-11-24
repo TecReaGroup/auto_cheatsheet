@@ -113,37 +113,27 @@ class SVGViewerWindow(QMainWindow):
         if sys.platform == 'win32' and DWMWA_USE_IMMERSIVE_DARK_MODE is not None:
             try:
                 hwnd = int(self.winId())
-                print(f"[DEBUG] Window handle: {hwnd}")
                 
                 # Try Windows 11 method (build 22000+)
                 value = c_int(1)  # 1 = dark mode, 0 = light mode
-                result = windll.dwmapi.DwmSetWindowAttribute(
+                windll.dwmapi.DwmSetWindowAttribute(
                     hwnd,
                     DWMWA_USE_IMMERSIVE_DARK_MODE,
                     byref(value),
                     ctypes.sizeof(value)
                 )
-                print(f"[DEBUG] DwmSetWindowAttribute result: {result}")
-                
-                if result == 0:
-                    print("[SUCCESS] Dark title bar applied via Windows API")
-                else:
-                    print(f"[WARNING] DwmSetWindowAttribute failed with code: {result}")
                 
                 # Also try setting caption color directly (Windows 11)
                 color = c_int(0x1e1c1c)  # BGR format: #1c1c1e
-                result2 = windll.dwmapi.DwmSetWindowAttribute(
+                windll.dwmapi.DwmSetWindowAttribute(
                     hwnd,
                     DWMWA_CAPTION_COLOR,
                     byref(color),
                     ctypes.sizeof(color)
                 )
-                print(f"[DEBUG] Caption color result: {result2}")
                 
-            except Exception as e:
-                print(f"[ERROR] Failed to apply Windows dark title bar: {e}")
-        else:
-            print(f"[INFO] Platform: {sys.platform}, API available: {DWMWA_USE_IMMERSIVE_DARK_MODE is not None}")
+            except Exception:
+                pass
     
     def load_svg(self):
         """Load SVG file"""
@@ -216,8 +206,8 @@ class SVGViewerWindow(QMainWindow):
                     
                     pixmap.save(file_path, "PNG", 100)
                     
-                    QMessageBox.information(self, "Success", f"Exported to:\n{file_path}")
-                    if hasattr(self, 'statusBar'):
+                    # Show status message only if viewer is visible
+                    if hasattr(self, 'statusBar') and self.isVisible():
                         self.statusBar().showMessage(f"Exported: {Path(file_path).name}", 3000)
                 else:
                     QMessageBox.warning(self, "Error", "Unable to render SVG")

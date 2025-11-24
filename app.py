@@ -23,10 +23,15 @@ class CheatsheetApp(QApplication):
         
         # Connect signals
         self.orb.svg_selected.connect(self.open_svg_viewer)
-        self.orb.selection_menu = None  # Will be created by orb
+        self.orb.menu_created.connect(self.connect_menu_signals)
         
         # Show floating orb
         self.orb.show()
+    
+    def connect_menu_signals(self):
+        """Connect menu signals when menu is created"""
+        if self.orb.selection_menu:
+            self.orb.selection_menu.export_requested.connect(self.handle_export_request)
     
     def open_svg_viewer(self, svg_path):
         """Open SVG viewer with selected file"""
@@ -35,12 +40,21 @@ class CheatsheetApp(QApplication):
         
         self.viewer = SVGViewerWindow(svg_path, self.settings)
         self.viewer.viewer_closed.connect(self.on_viewer_closed)
-        
-        # Connect export signal from menu to viewer
-        if self.orb.selection_menu:
-            self.orb.selection_menu.export_requested.connect(self.viewer.export_png_by_path)
-        
         self.viewer.show()
+    
+    def handle_export_request(self, filepath):
+        """Handle export request - export without opening viewer"""
+        # Create a hidden viewer just for export
+        if not self.viewer:
+            self.viewer = SVGViewerWindow(filepath, self.settings)
+        
+        # Export without showing the viewer
+        self.viewer.export_png_by_path(filepath)
+        
+        # Clean up the hidden viewer
+        if not self.viewer.isVisible():
+            self.viewer.deleteLater()
+            self.viewer = None
     
     def on_viewer_closed(self):
         """Handle viewer close - show selection menu"""

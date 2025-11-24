@@ -21,10 +21,12 @@ class SelectionMenu(QWidget):
         self.settings = SettingsManager()
         self.svg_dir = Path("./src/svg")
         self.svg_files = []
+        self._lists_populated = False
         
         self.setup_ui()
-        self.load_svg_files()
         self.apply_theme()
+        # Defer expensive list population until after menu is shown
+        self.load_svg_files()
     
     def setup_ui(self):
         """Setup UI elements"""
@@ -79,20 +81,24 @@ class SelectionMenu(QWidget):
         # Tabs for different categories
         self.tabs = QTabWidget()
         self.tabs.setObjectName("tabs")
+        self.tabs.currentChanged.connect(self.on_tab_changed)
         
         # All files tab
         self.all_list = QListWidget()
         self.all_list.setSpacing(2)
+        self.all_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.tabs.addTab(self.all_list, "All")
         
         # Recent files tab
         self.recent_list = QListWidget()
         self.recent_list.setSpacing(2)
+        self.recent_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.tabs.addTab(self.recent_list, "Recent")
         
         # Favorites tab
         self.favorites_list = QListWidget()
         self.favorites_list.setSpacing(2)
+        self.favorites_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.tabs.addTab(self.favorites_list, "Favorites")
         
         layout.addWidget(self.tabs)
@@ -107,38 +113,48 @@ class SelectionMenu(QWidget):
         
         for svg_file in sorted(self.svg_dir.glob("*.svg")):
             self.svg_files.append(svg_file)
-        
-        self.populate_lists()
     
     def populate_lists(self):
         """Populate all list widgets with custom widgets"""
+        # Disable updates during batch operation
+        self.all_list.setUpdatesEnabled(False)
         self.all_list.clear()
+        
+        # Use full width for list items to prevent horizontal scrolling
+        list_width = self.all_list.viewport().width()
+        fixed_size = QSize(list_width, 48)
         
         for svg_file in self.svg_files:
             display_name = self.format_display_name(svg_file.stem)
             filepath = str(svg_file)
             is_favorite = self.settings.is_favorite(filepath)
             
-            # Create custom widget
             widget = ListItemWidget(filepath, display_name, is_favorite)
             widget.open_clicked.connect(self.select_svg)
             widget.favorite_clicked.connect(self.toggle_favorite_by_path)
-            widget.export_clicked.connect(self.export_requested.emit)
+            widget.export_clicked.connect(lambda fp=filepath: self.handle_export(fp))
             widget.edit_clicked.connect(self.edit_yaml)
             
-            # Add to list
             item = QListWidgetItem(self.all_list)
-            item.setSizeHint(QSize(widget.sizeHint().width(), 48))
+            item.setSizeHint(fixed_size)
             self.all_list.addItem(item)
             self.all_list.setItemWidget(item, widget)
+        
+        # Re-enable updates and refresh
+        self.all_list.setUpdatesEnabled(True)
         
         self.populate_recent()
         self.populate_favorites()
     
     def populate_recent(self):
         """Populate recent files list with custom widgets"""
+        self.recent_list.setUpdatesEnabled(False)
         self.recent_list.clear()
         recent_files = self.settings.get_recent_files()
+        
+        # Use same width as all_list to ensure consistency
+        list_width = self.all_list.viewport().width()
+        fixed_size = QSize(list_width, 48)
         
         for filepath in recent_files:
             path = Path(filepath)
@@ -149,18 +165,25 @@ class SelectionMenu(QWidget):
                 widget = ListItemWidget(filepath, display_name, is_favorite)
                 widget.open_clicked.connect(self.select_svg)
                 widget.favorite_clicked.connect(self.toggle_favorite_by_path)
-                widget.export_clicked.connect(self.export_requested.emit)
+                widget.export_clicked.connect(lambda fp=filepath: self.handle_export(fp))
                 widget.edit_clicked.connect(self.edit_yaml)
                 
                 item = QListWidgetItem(self.recent_list)
-                item.setSizeHint(QSize(widget.sizeHint().width(), 48))
+                item.setSizeHint(fixed_size)
                 self.recent_list.addItem(item)
                 self.recent_list.setItemWidget(item, widget)
+        
+        self.recent_list.setUpdatesEnabled(True)
     
     def populate_favorites(self):
         """Populate favorites list with custom widgets"""
+        self.favorites_list.setUpdatesEnabled(False)
         self.favorites_list.clear()
         favorites = self.settings.get_favorites()
+        
+        # Use same width as all_list to ensure consistency
+        list_width = self.all_list.viewport().width()
+        fixed_size = QSize(list_width, 48)
         
         for filepath in favorites:
             path = Path(filepath)
@@ -170,25 +193,48 @@ class SelectionMenu(QWidget):
                 widget = ListItemWidget(filepath, display_name, True)
                 widget.open_clicked.connect(self.select_svg)
                 widget.favorite_clicked.connect(self.toggle_favorite_by_path)
-                widget.export_clicked.connect(self.export_requested.emit)
+                widget.export_clicked.connect(lambda fp=filepath: self.handle_export(fp))
                 widget.edit_clicked.connect(self.edit_yaml)
                 
                 item = QListWidgetItem(self.favorites_list)
-                item.setSizeHint(QSize(widget.sizeHint().width(), 48))
+                item.setSizeHint(fixed_size)
                 self.favorites_list.addItem(item)
                 self.favorites_list.setItemWidget(item, widget)
+        
+        self.favorites_list.setUpdatesEnabled(True)
     
     def format_display_name(self, filename):
         """Format filename for display"""
         name = filename.replace("_cheatsheet", "").replace("_", " ")
         return name.title()
     
+    def on_tab_changed(self, index):
+        """Re-apply search filter when tab changes"""
+        self.filter_list(self.search_input.text())
+    
     def filter_list(self, text):
-        """Filter the all files list based on search text"""
+        """Filter the currently active tab's list based on search text"""
         text = text.lower()
-        for i in range(self.all_list.count()):
-            item = self.all_list.item(i)
-            item.setHidden(text not in item.text().lower())
+        
+        # Get the currently active list widget
+        current_list = self.tabs.currentWidget()
+        if not current_list:
+            return
+        
+        for i in range(current_list.count()):
+            item = current_list.item(i)
+            widget = current_list.itemWidget(item)
+            if widget:
+                # Get the display name from the widget's label
+                display_name = widget.name_label.text().lower()
+                item.setHidden(text not in display_name)
+    
+    def showEvent(self, event):
+        """Populate lists when menu is first shown"""
+        super().showEvent(event)
+        if not self._lists_populated:
+            self._lists_populated = True
+            self.populate_lists()
     
     def toggle_favorite_by_path(self, filepath):
         """Toggle favorite status by filepath"""
@@ -198,12 +244,21 @@ class SelectionMenu(QWidget):
             self.settings.add_favorite(filepath)
         
         # Refresh all lists to update UI
-        self.populate_lists()
+        if self._lists_populated:
+            # Save current search text before refreshing
+            current_search = self.search_input.text()
+            self.populate_lists()
+            # Re-apply search filter after refreshing lists
+            if current_search:
+                self.filter_list(current_search)
+    
+    def handle_export(self, filepath):
+        """Handle export request"""
+        self.export_requested.emit(filepath)
     
     def edit_yaml(self, filepath):
-        """Open corresponding YAML file in default editor"""
+        """Open corresponding YAML file in configured or system default editor"""
         svg_path = Path(filepath)
-        # Assuming YAML files are in src/doc with same stem
         yaml_path = Path("./src/doc") / f"{svg_path.stem}.yaml"
         
         if not yaml_path.exists():
@@ -212,12 +267,21 @@ class SelectionMenu(QWidget):
             return
         
         try:
-            if sys.platform == "win32":
-                subprocess.Popen(["notepad.exe", str(yaml_path)])
-            elif sys.platform == "darwin":
-                subprocess.Popen(["open", str(yaml_path)])
+            # Check for user-configured editor
+            custom_editor = self.settings.get_yaml_editor()
+            
+            if custom_editor:
+                # Use custom editor
+                subprocess.Popen([custom_editor, str(yaml_path)])
             else:
-                subprocess.Popen(["xdg-open", str(yaml_path)])
+                # Use system default
+                if sys.platform == "win32":
+                    import os
+                    os.startfile(str(yaml_path))
+                elif sys.platform == "darwin":
+                    subprocess.Popen(["open", str(yaml_path)])
+                else:
+                    subprocess.Popen(["xdg-open", str(yaml_path)])
         except Exception as e:
             QMessageBox.critical(self, "Error",
                                f"Failed to open YAML file:\n{str(e)}")

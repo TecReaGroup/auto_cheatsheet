@@ -98,3 +98,12 @@ class SettingsManager:
     def get_zoom_level(self):
         """Get saved zoom level"""
         return self.settings.value("viewer/zoom", 1.0, type=float)
+    
+    # YAML Editor
+    def save_yaml_editor(self, editor_path):
+        """Save YAML editor path"""
+        self.settings.setValue("editor/yaml", editor_path)
+    
+    def get_yaml_editor(self):
+        """Get YAML editor path"""
+        return self.settings.value("editor/yaml", "", type=str)

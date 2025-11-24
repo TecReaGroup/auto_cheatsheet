@@ -11,6 +11,7 @@ class FloatingOrb(QWidget):
     """Draggable floating orb widget"""
     
     svg_selected = Signal(str)
+    menu_created = Signal()  # Emitted when selection menu is created
     
     def __init__(self):
         super().__init__()
@@ -241,6 +242,7 @@ class FloatingOrb(QWidget):
             if not self.selection_menu:
                 self.selection_menu = SelectionMenu(self)
                 self.selection_menu.svg_selected.connect(self.on_svg_selected)
+                self.menu_created.emit()  # Notify app that menu was created
             
             self.update_menu_position()
             self.selection_menu.show()
