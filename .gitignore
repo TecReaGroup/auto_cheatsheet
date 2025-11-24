@@ -1,5 +1,6 @@
 /src/doc/*
 /src/image/*
 /src/svg/*
+/src/data.yaml
 
 __pycache__
