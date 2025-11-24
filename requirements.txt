@@ -8,5 +8,8 @@ PySide6>=6.5.0
 PySide6-Addons>=6.5.0
 QtAwesome>=1.2.0
 
+# LLM API Client
+requests
+
 # Optional: For advanced PNG conversion
 playwright

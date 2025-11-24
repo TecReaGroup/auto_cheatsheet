@@ -107,3 +107,28 @@ class SettingsManager:
     def get_yaml_editor(self):
         """Get YAML editor path"""
         return self.settings.value("editor/yaml", "", type=str)
+    
+    # LLM API Settings
+    def save_llm_api_url(self, url):
+        """Save LLM API URL"""
+        self.settings.setValue("llm/api_url", url)
+    
+    def get_llm_api_url(self):
+        """Get LLM API URL"""
+        return self.settings.value("llm/api_url", "https://api.openai.com/v1", type=str)
+    
+    def save_llm_api_key(self, key):
+        """Save LLM API key"""
+        self.settings.setValue("llm/api_key", key)
+    
+    def get_llm_api_key(self):
+        """Get LLM API key"""
+        return self.settings.value("llm/api_key", "", type=str)
+    
+    def save_llm_model(self, model):
+        """Save LLM model name"""
+        self.settings.setValue("llm/model", model)
+    
+    def get_llm_model(self):
+        """Get LLM model name"""
+        return self.settings.value("llm/model", "gpt-4", type=str)

@@ -22,6 +22,9 @@ class CheatsheetApp(QApplication):
         # Initialize settings
         self.settings = SettingsManager()
         
+        # Generate SVGs on startup
+        self.generate_svgs_on_startup()
+        
         # Initialize windows
         self.orb = FloatingOrb()
         self.viewer = None
@@ -32,6 +35,14 @@ class CheatsheetApp(QApplication):
         
         # Show floating orb
         self.orb.show()
+    
+    def generate_svgs_on_startup(self):
+        """Generate SVGs on application startup"""
+        try:
+            from main import scan_and_generate
+            scan_and_generate(to_png=False)
+        except Exception as e:
+            print(f"Error generating SVGs on startup: {e}")
     
     def connect_menu_signals(self):
         """Connect menu signals when menu is created"""

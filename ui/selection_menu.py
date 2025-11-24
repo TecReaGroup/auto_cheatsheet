@@ -8,6 +8,8 @@ from PySide6.QtCore import Qt, Signal, QSize, QPoint
 from core.settings_manager import SettingsManager
 from ui.list_item_widget import ListItemWidget
 from ui.icon_manager import IconManager
+from ui.settings_dialog import SettingsDialog
+from ui.add_cheatsheet_dialog import AddCheatsheetDialog
 
 
 class SelectionMenu(QWidget):
@@ -55,9 +57,9 @@ class SelectionMenu(QWidget):
         layout.setSpacing(12)
         container_layout.addLayout(layout)
         
-        # Title bar with quit button
+        # Title bar with settings and quit buttons
         title_layout = QHBoxLayout()
-        title_layout.setSpacing(0)
+        title_layout.setSpacing(8)
         title_layout.setContentsMargins(0, 0, 0, 0)
         
         title = QLabel("Cheatsheets")
@@ -66,6 +68,17 @@ class SelectionMenu(QWidget):
         
         title_layout.addStretch()
         
+        # Settings button on the right (before close button)
+        settings_button = QPushButton()
+        settings_button.setObjectName("iconButton")
+        settings_button.setFixedSize(32, 32)
+        settings_button.setIcon(IconManager.get_settings_icon())
+        settings_button.setIconSize(QSize(18, 18))
+        settings_button.clicked.connect(self.open_settings)
+        settings_button.setToolTip("Settings")
+        title_layout.addWidget(settings_button, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+        
+        # Quit button on the far right
         quit_button = QPushButton()
         quit_button.setObjectName("quitButton")
         quit_button.setFixedSize(32, 32)
@@ -93,21 +106,35 @@ class SelectionMenu(QWidget):
         self.all_list = QListWidget()
         self.all_list.setSpacing(2)
         self.all_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.all_list.setSelectionMode(QListWidget.SelectionMode.NoSelection)
+        self.all_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.tabs.addTab(self.all_list, "All")
         
         # Recent files tab
         self.recent_list = QListWidget()
         self.recent_list.setSpacing(2)
         self.recent_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.recent_list.setSelectionMode(QListWidget.SelectionMode.NoSelection)
+        self.recent_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.tabs.addTab(self.recent_list, "Recent")
         
         # Favorites tab
         self.favorites_list = QListWidget()
         self.favorites_list.setSpacing(2)
         self.favorites_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.favorites_list.setSelectionMode(QListWidget.SelectionMode.NoSelection)
+        self.favorites_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.tabs.addTab(self.favorites_list, "Favorites")
         
         layout.addWidget(self.tabs)
+        
+        # Add button below tabs
+        add_button = QPushButton("+ Add Cheatsheet")
+        add_button.setObjectName("addButton")
+        add_button.setFixedHeight(44)
+        add_button.clicked.connect(self.open_add_dialog)
+        add_button.setToolTip("Generate a new cheatsheet using AI")
+        layout.addWidget(add_button)
     
     def load_svg_files(self):
         """Load SVG files from directory"""
@@ -211,8 +238,7 @@ class SelectionMenu(QWidget):
     
     def format_display_name(self, filename):
         """Format filename for display"""
-        name = filename.replace("_cheatsheet", "").replace("_", " ")
-        return name.title()
+        return filename.replace("_cheatsheet", "").replace("_", " ")
     
     def on_tab_changed(self, index):
         """Re-apply search filter when tab changes"""
@@ -291,6 +317,50 @@ class SelectionMenu(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error",
                                f"Failed to open YAML file:\n{str(e)}")
+        
+        # Regenerate SVG after edit
+        self.regenerate_svg_after_delay()
+    
+    def regenerate_svg_after_delay(self):
+        """Regenerate SVGs after a short delay to allow file saves"""
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(2000, self.regenerate_svgs)
+    
+    def regenerate_svgs(self):
+        """Regenerate all SVGs using main.py"""
+        try:
+            from main import scan_and_generate
+            scan_and_generate(to_png=False)
+            # Refresh lists after regeneration
+            self.refresh_lists()
+        except Exception as e:
+            print(f"Error regenerating SVGs: {e}")
+    
+    def open_settings(self):
+        """Open settings dialog"""
+        dialog = SettingsDialog(self)
+        dialog.exec()
+    
+    def open_add_dialog(self):
+        """Open add cheatsheet dialog"""
+        dialog = AddCheatsheetDialog(self)
+        dialog.cheatsheet_added.connect(self.on_cheatsheet_added)
+        dialog.exec()
+    
+    def on_cheatsheet_added(self, filepath):
+        """Handle new cheatsheet added"""
+        self.refresh_lists()
+    
+    def refresh_lists(self):
+        """Refresh all lists to show new/updated cheatsheets"""
+        # Reload files
+        self.load_svg_files()
+        # Repopulate lists
+        if self._lists_populated:
+            current_search = self.search_input.text()
+            self.populate_lists()
+            if current_search:
+                self.filter_list(current_search)
     
     def select_svg(self, filepath):
         """Emit selected SVG and add to recent"""
@@ -481,9 +551,26 @@ class SelectionMenu(QWidget):
                     background-color: transparent;
                     border: none;
                     border-radius: 6px;
+                    padding: 6px;
                 }
                 QPushButton#iconButton:hover {
                     background-color: rgba(58, 58, 60, 0.5);
+                }
+                QPushButton#addButton {
+                    padding: 12px 20px;
+                    border: none;
+                    border-radius: 10px;
+                    background-color: rgba(52, 199, 89, 0.15);
+                    color: #30d158;
+                    font-size: 15px;
+                    font-weight: 500;
+                    font-family: -apple-system, 'SF Pro Text', 'Segoe UI', sans-serif;
+                }
+                QPushButton#addButton:hover {
+                    background-color: rgba(52, 199, 89, 0.25);
+                }
+                QPushButton#addButton:pressed {
+                    background-color: rgba(52, 199, 89, 0.35);
                 }
                 QListWidget::item:focus {
                     outline: none;
@@ -613,9 +700,26 @@ class SelectionMenu(QWidget):
                     background-color: transparent;
                     border: none;
                     border-radius: 6px;
+                    padding: 6px;
                 }
                 QPushButton#iconButton:hover {
                     background-color: rgba(229, 229, 234, 0.6);
+                }
+                QPushButton#addButton {
+                    padding: 12px 20px;
+                    border: none;
+                    border-radius: 10px;
+                    background-color: rgba(52, 199, 89, 0.15);
+                    color: #34c759;
+                    font-size: 15px;
+                    font-weight: 500;
+                    font-family: -apple-system, 'SF Pro Text', 'Segoe UI', sans-serif;
+                }
+                QPushButton#addButton:hover {
+                    background-color: rgba(52, 199, 89, 0.25);
+                }
+                QPushButton#addButton:pressed {
+                    background-color: rgba(52, 199, 89, 0.35);
                 }
                 QListWidget::item:focus {
                     outline: none;

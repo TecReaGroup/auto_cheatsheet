@@ -56,7 +56,7 @@ class ListItemWidget(QWidget):
             }
         """)
         self.name_label.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.name_label.mousePressEvent = lambda e: self.open_clicked.emit(self.filepath)
+        self.name_label.mousePressEvent = self.handle_label_click
         layout.addWidget(self.name_label, 1, Qt.AlignmentFlag.AlignVCenter)
         
         # Favorite button
@@ -120,6 +120,11 @@ class ListItemWidget(QWidget):
         
         # Show menu at button position
         menu.exec(self.expand_btn.mapToGlobal(self.expand_btn.rect().bottomLeft()))
+    
+    def handle_label_click(self, event):
+        """Handle label click and prevent event propagation"""
+        event.accept()
+        self.open_clicked.emit(self.filepath)
     
     def set_favorite(self, is_favorite):
         """Update favorite status"""

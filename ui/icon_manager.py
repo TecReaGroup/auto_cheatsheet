@@ -102,3 +102,8 @@ class IconManager:
     def get_orb_document_icon(color=WHITE, size=20):
         """Get document icon for floating orb"""
         return qta.icon('fa5s.file-alt', color=color, scale_factor=1.0)
+    
+    @staticmethod
+    def get_settings_icon(color=APPLE_GRAY, size=20):
+        """Get settings/gear icon"""
+        return qta.icon('fa5s.cog', color=color, scale_factor=1.0)
