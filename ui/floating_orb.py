@@ -1,5 +1,5 @@
 """Floating orb widget - Main entry point"""
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget, QMenu, QApplication
 from PySide6.QtCore import Qt, QPoint, Signal, QPropertyAnimation, QEasingCurve, Property, QRect
 from PySide6.QtGui import QPainter, QColor
 from ui.selection_menu import SelectionMenu
@@ -124,6 +124,9 @@ class FloatingOrb(QWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             self.press_position = event.globalPosition().toPoint()
             self.drag_position = self.press_position - self.frameGeometry().topLeft()
+            event.accept()
+        elif event.button() == Qt.MouseButton.RightButton:
+            self.show_context_menu(event.globalPosition().toPoint())
             event.accept()
     
     def mouseMoveEvent(self, event):
@@ -298,6 +301,16 @@ class FloatingOrb(QWidget):
             self.move(new_orb_pos)
         finally:
             self._menu_drag_in_progress = False
+    
+    def show_context_menu(self, pos):
+        """Show context menu on right-click"""
+        menu = QMenu(self)
+        
+        exit_action = menu.addAction("Exit")
+        exit_action.setIcon(IconManager.get_close_icon())
+        exit_action.triggered.connect(QApplication.quit)
+        
+        menu.exec(pos)
     
     def on_svg_selected(self, svg_path):
         """Handle SVG selection"""

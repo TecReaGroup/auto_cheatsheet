@@ -1,11 +1,24 @@
 """Dialog for adding new cheatsheet via LLM"""
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
+import sys
+import ctypes
+from ctypes import c_int, byref, windll
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                                 QLineEdit, QPushButton, QTextEdit, QProgressBar,
                                 QMessageBox)
 from PySide6.QtCore import Qt, Signal, QThread
+from PySide6.QtGui import QPalette, QColor
 from core.settings_manager import SettingsManager
 from script.llm_generator import LLMGenerator
+from ui.icon_manager import IconManager
 from pathlib import Path
+
+# Windows DWM constants
+try:
+    DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+    DWMWA_CAPTION_COLOR = 35
+except Exception:
+    DWMWA_USE_IMMERSIVE_DARK_MODE = None
+    DWMWA_CAPTION_COLOR = None
 
 
 class GeneratorThread(QThread):
@@ -34,15 +47,23 @@ class AddCheatsheetDialog(QDialog):
         self.settings = SettingsManager()
         self.generator_thread = None
         self.generated_content = ""
+        self._dark_titlebar_applied = False
         self.setup_ui()
         self.apply_theme()
     
     def setup_ui(self):
         """Setup UI elements"""
         self.setWindowTitle("Add Cheatsheet")
+        self.setWindowIcon(IconManager.get_document_icon())
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowStaysOnTopHint)
         self.setModal(True)
         self.setFixedSize(600, 500)
+        
+        # Force dark palette
+        dark_palette = QPalette()
+        dark_palette.setColor(QPalette.ColorRole.Window, QColor(28, 28, 30))
+        dark_palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
+        self.setPalette(dark_palette)
         
         # Main layout
         layout = QVBoxLayout(self)
@@ -240,6 +261,31 @@ class AddCheatsheetDialog(QDialog):
         self.status_label.style().unpolish(self.status_label)
         self.status_label.style().polish(self.status_label)
         self.status_label.show()
+    
+    def showEvent(self, event):
+        """Override show event to apply dark titlebar before window appears"""
+        super().showEvent(event)
+        if not self._dark_titlebar_applied:
+            self._dark_titlebar_applied = True
+            self.apply_windows_dark_titlebar()
+    
+    def apply_windows_dark_titlebar(self):
+        """Apply dark title bar on Windows"""
+        if sys.platform == 'win32' and DWMWA_USE_IMMERSIVE_DARK_MODE is not None:
+            try:
+                hwnd = int(self.winId())
+                value = c_int(1)
+                windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE,
+                    byref(value), ctypes.sizeof(value)
+                )
+                color = c_int(0x1e1c1c)
+                windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd, DWMWA_CAPTION_COLOR,
+                    byref(color), ctypes.sizeof(color)
+                )
+            except Exception:
+                pass
     
     def apply_theme(self):
         """Apply theme styling"""

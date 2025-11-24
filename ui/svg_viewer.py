@@ -29,6 +29,7 @@ class SVGViewerWindow(QMainWindow):
         super().__init__()
         self.svg_path = Path(svg_path)
         self.settings = settings
+        self._dark_titlebar_applied = False
         
         self.setup_ui()
         self.create_actions()
@@ -36,9 +37,6 @@ class SVGViewerWindow(QMainWindow):
         self.load_svg()
         self.apply_theme()
         self.restore_geometry()
-        
-        # Apply Windows dark title bar after window is shown
-        QTimer.singleShot(100, self.apply_windows_dark_titlebar)
     
     def setup_ui(self):
         """Setup UI elements"""
@@ -107,6 +105,13 @@ class SVGViewerWindow(QMainWindow):
     def set_window_icon(self):
         """Set window icon using QtAwesome"""
         self.setWindowIcon(IconManager.get_window_icon())
+    
+    def showEvent(self, event):
+        """Override show event to apply dark titlebar before window appears"""
+        super().showEvent(event)
+        if not self._dark_titlebar_applied:
+            self._dark_titlebar_applied = True
+            self.apply_windows_dark_titlebar()
     
     def apply_windows_dark_titlebar(self):
         """Apply dark title bar on Windows 10/11"""

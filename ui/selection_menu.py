@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess
 import sys
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QListWidget, QListWidgetItem,
-                                QLineEdit, QPushButton, QHBoxLayout, QLabel, QTabWidget, QApplication, QMessageBox)
+                                QLineEdit, QPushButton, QHBoxLayout, QLabel, QTabWidget, QMessageBox)
 from PySide6.QtCore import Qt, Signal, QSize, QPoint
 from core.settings_manager import SettingsManager
 from ui.list_item_widget import ListItemWidget
@@ -78,15 +78,15 @@ class SelectionMenu(QWidget):
         settings_button.setToolTip("Settings")
         title_layout.addWidget(settings_button, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
         
-        # Quit button on the far right
-        quit_button = QPushButton()
-        quit_button.setObjectName("quitButton")
-        quit_button.setFixedSize(32, 32)
-        quit_button.setIcon(IconManager.get_close_icon())
-        quit_button.setIconSize(QSize(16, 16))
-        quit_button.clicked.connect(self.quit_app)
-        quit_button.setToolTip("Quit Application")
-        title_layout.addWidget(quit_button, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+        # Close button on the far right (hides menu only)
+        close_button = QPushButton()
+        close_button.setObjectName("quitButton")
+        close_button.setFixedSize(32, 32)
+        close_button.setIcon(IconManager.get_close_icon())
+        close_button.setIconSize(QSize(16, 16))
+        close_button.clicked.connect(self.close)
+        close_button.setToolTip("Close Menu")
+        title_layout.addWidget(close_button, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
         
         layout.addLayout(title_layout)
         
@@ -463,10 +463,6 @@ class SelectionMenu(QWidget):
             event.accept()
             return
         super().mouseReleaseEvent(event)
-    
-    def quit_app(self):
-        """Quit the entire application"""
-        QApplication.quit()
     
     def apply_theme(self):
         """Apply Apple-style minimalist theme"""
