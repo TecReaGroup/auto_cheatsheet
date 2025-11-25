@@ -2,5 +2,6 @@
 /src/image/*
 /src/svg/*
 /src/data.yaml
+/build/*
 
 __pycache__
