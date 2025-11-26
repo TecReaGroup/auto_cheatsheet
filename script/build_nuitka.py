@@ -19,7 +19,7 @@ def convert_icon():
     print("[1/4] Converting icon...")
     
     icon_png = Path("asset/icon/icon.png")
-    icon_ico = Path("asset/iconicon.ico")
+    icon_ico = Path("asset/icon/icon.ico")
     
     if not icon_png.exists():
         print(f"[WARNING] Icon not found: {icon_png}")
@@ -79,7 +79,7 @@ def build():
         
         # Windows specific
         "--windows-disable-console",  # No console window
-        "--windows-icon-from-ico=icon.ico" if Path("icon.ico").exists() else "--windows-icon-from-ico=asset/icon/icon.png",
+        "--windows-icon-from-ico=asset/icon/icon.png",
         
         # PySide6 plugin
         "--enable-plugin=pyside6",
@@ -98,9 +98,10 @@ def build():
         "--include-package=core",
         "--include-package=script",
         
-        # SIZE OPTIMIZATION FLAGS
-        "--lto=yes",  # Link Time Optimization (smaller binary)
-        "--remove-output",  # Remove build artifacts after success
+        # SPEED OPTIMIZATION FLAGS (LTO disabled for faster build)
+        "--lto=no",  # Disable LTO - saves 15-20 minutes, only adds ~5-10% size
+        "--assume-yes-for-downloads",  # Auto-download dependencies
+        "--quiet",  # Reduce output noise
         
         # Exclude unused Qt modules to reduce size
         "--nofollow-import-to=PySide6.QtWebEngineCore",
@@ -149,11 +150,19 @@ def build():
     if not Path("icon.ico").exists() and not Path("asset/icon/icon.png").exists():
         cmd = [c for c in cmd if not c.startswith("--windows-icon-from-ico")]
     
-    print("\nRunning Nuitka with command:")
-    print(" ".join(cmd))
-    print("\n" + "="*60)
+    print("\nBuilding... (this will take ~10-12 minutes)")
+    print("="*60 + "\n")
     
-    result = subprocess.run(cmd)
+    # Run with reduced output
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    
+    # Only show important lines (errors, warnings, and final result)
+    if result.stdout:
+        for line in result.stdout.splitlines():
+            # Show important messages
+            if any(keyword in line.lower() for keyword in ['error', 'warning', 'fatal', 'successfully created']):
+                print(line)
+    
     return result.returncode == 0
 
 def organize_output():

@@ -3,7 +3,6 @@ from pathlib import Path
 import time
 import re
 from urllib.request import urlretrieve
-from playwright.sync_api import sync_playwright
 
 
 class BrowserDaemon:
@@ -19,9 +18,13 @@ class BrowserDaemon:
         return cls._instance
     
     def __init__(self):
-        self._playwright = sync_playwright().start()
-        self._browser = self._playwright.chromium.launch()
-        print("✓ Browser daemon started")
+        try:
+            from playwright.sync_api import sync_playwright
+            self._playwright = sync_playwright().start()
+            self._browser = self._playwright.chromium.launch()
+            print("✓ Browser daemon started")
+        except ImportError:
+            raise ImportError("playwright not installed. Install it with: pip install playwright && playwright install chromium")
     
     def get_page(self, width, height):
         return self._browser.new_page(viewport={'width': width, 'height': height})
@@ -57,6 +60,13 @@ def download_fonts(svg_content, font_dir="./asset/font"):
 def convert_svg_to_png(svg_path, png_path, scale=2.0):
     """Convert SVG to PNG using persistent browser"""
     try:
+        # Lazy import playwright - only when actually needed
+        try:
+            from playwright.sync_api import sync_playwright  # noqa: F401
+        except ImportError:
+            print("Error: playwright not installed. Install it with: pip install playwright && playwright install chromium")
+            return False
+        
         start_time = time.time()
         svg_path = Path(svg_path).absolute()
         png_path = Path(png_path).absolute()

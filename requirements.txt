@@ -13,3 +13,6 @@ requests
 
 # Optional: For advanced PNG conversion
 playwright
+
+# Development Dependencies
+imageio

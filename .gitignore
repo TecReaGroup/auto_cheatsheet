@@ -3,5 +3,7 @@
 /src/svg/*
 /src/data.yaml
 /build/*
+/dist/*
+
 
 __pycache__
