@@ -1,4 +1,4 @@
-"""Package the application for distribution"""
+"""Package Auto Cheatsheet for distribution"""
 import shutil
 import zipfile
 from pathlib import Path
@@ -7,7 +7,7 @@ from datetime import datetime
 def create_package():
     """Create distribution package with exe, log, and src folders"""
     print("="*60)
-    print("Creating distribution package...")
+    print("Creating Auto Cheatsheet distribution package...")
     print("="*60)
     
     # Check if exe exists
@@ -23,7 +23,7 @@ def create_package():
     
     # Create package directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    package_name = f"CheatsheetViewer_{timestamp}"
+    package_name = f"AutoCheatsheet_{timestamp}"
     package_dir = dist_dir / package_name
     
     # Clean up if exists
@@ -32,8 +32,8 @@ def create_package():
     package_dir.mkdir()
     
     print("\n[1/4] Copying executable...")
-    shutil.copy2(exe_path, package_dir / "CheatsheetViewer.exe")
-    print("  ✓ Copied: CheatsheetViewer.exe")
+    shutil.copy2(exe_path, package_dir / "AutoCheatsheet.exe")
+    print("  ✓ Copied: AutoCheatsheet.exe")
     
     print("\n[2/4] Creating empty log directory...")
     log_dir = package_dir / "log"
@@ -66,7 +66,7 @@ def create_package():
     print(f"Package: {zip_path}")
     print(f"Size: {size_mb:.1f} MB")
     print("\nContents:")
-    print("  - CheatsheetViewer.exe")
+    print("  - AutoCheatsheet.exe")
     print("  - log/ (empty directory for runtime logs)")
     print("  - src/ (empty directory for cheatsheet data)")
     print("="*60)

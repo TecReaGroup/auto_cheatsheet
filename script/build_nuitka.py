@@ -1,4 +1,4 @@
-"""Nuitka build script with size optimization"""
+"""Nuitka build script for Auto Cheatsheet"""
 import subprocess
 import sys
 import shutil
@@ -101,7 +101,7 @@ def build():
         # SPEED OPTIMIZATION FLAGS (LTO disabled for faster build)
         "--lto=no",  # Disable LTO - saves 15-20 minutes, only adds ~5-10% size
         "--assume-yes-for-downloads",  # Auto-download dependencies
-        "--quiet",  # Reduce output noise
+        "--show-progress",  # Show build progress
         
         # Exclude unused Qt modules to reduce size
         "--nofollow-import-to=PySide6.QtWebEngineCore",
@@ -150,18 +150,10 @@ def build():
     if not Path("icon.ico").exists() and not Path("asset/icon/icon.png").exists():
         cmd = [c for c in cmd if not c.startswith("--windows-icon-from-ico")]
     
-    print("\nBuilding... (this will take ~10-12 minutes)")
-    print("="*60 + "\n")
+    print("\n" + "="*60)
     
-    # Run with reduced output
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    
-    # Only show important lines (errors, warnings, and final result)
-    if result.stdout:
-        for line in result.stdout.splitlines():
-            # Show important messages
-            if any(keyword in line.lower() for keyword in ['error', 'warning', 'fatal', 'successfully created']):
-                print(line)
+    # Run with progress output
+    result = subprocess.run(cmd)
     
     return result.returncode == 0
 
@@ -204,7 +196,7 @@ def organize_output():
 
 def main():
     print("="*60)
-    print("Building Cheatsheet Viewer with Nuitka")
+    print("Building Auto Cheatsheet with Nuitka")
     print("Size-optimized configuration")
     print("="*60 + "\n")
     

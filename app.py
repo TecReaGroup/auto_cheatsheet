@@ -1,11 +1,13 @@
-"""PySide6 Cheatsheet Viewer Application - Main Entry Point"""
+"""Auto Cheatsheet - Main Entry Point"""
 import sys
+
+# Setup logger FIRST before any other imports or print statements
+
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QTimer
 from ui.floating_orb import FloatingOrb
 from ui.svg_viewer import SVGViewerWindow
 from core.settings_manager import SettingsManager
-from core.logger import logger
 import signal
 import traceback
 
@@ -17,8 +19,8 @@ class CheatsheetApp(QApplication):
     
     def __init__(self, argv):
         super().__init__(argv)
-        self.setApplicationName("Cheatsheet Viewer")
-        self.setOrganizationName("CheatsheetApp")
+        self.setApplicationName("Auto Cheatsheet")
+        self.setOrganizationName("AutoCheatsheet")
         
         # Initialize settings
         self.settings = SettingsManager()
@@ -45,13 +47,13 @@ class CheatsheetApp(QApplication):
     def generate_svgs_on_startup(self):
         """Generate SVGs on application startup"""
         try:
-            logger.info("Generating SVGs on startup...")
+            print("Generating SVGs on startup...")
             from main import scan_and_generate
             scan_and_generate(to_png=False)
-            logger.info("SVG generation completed")
+            print("SVG generation completed")
         except Exception as e:
-            logger.error(f"Error generating SVGs on startup: {e}")
-            logger.error(traceback.format_exc())
+            print(f"Error generating SVGs on startup: {e}")
+            print(traceback.format_exc())
     
     def connect_menu_signals(self):
         """Connect menu signals when menu is created"""
@@ -90,19 +92,23 @@ class CheatsheetApp(QApplication):
 
 def main():
     """Application entry point"""
+    # Initialize logger before anything else
+    from core.logger import setup_logger
+    setup_logger()
+    
     try:
-        logger.info("="*60)
-        logger.info("Starting Cheatsheet Viewer Application")
-        logger.info("="*60)
+        print("="*60)
+        print("Starting Auto Cheatsheet Application")
+        print("="*60)
         app = CheatsheetApp(sys.argv)
-        logger.info("Application initialized successfully")
+        print("Application initialized successfully")
         sys.exit(app.exec())
     except Exception as e:
-        logger.error("="*60)
-        logger.error("FATAL ERROR: Application failed to start")
-        logger.error("="*60)
-        logger.error(f"Error: {e}")
-        logger.error(traceback.format_exc())
+        print("="*60)
+        print("FATAL ERROR: Application failed to start")
+        print("="*60)
+        print(f"Error: {e}")
+        print(traceback.format_exc())
         sys.exit(1)
 
 

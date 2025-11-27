@@ -4,6 +4,6 @@
 /src/data.yaml
 /build/*
 /dist/*
-
+/log/*
 
 __pycache__
