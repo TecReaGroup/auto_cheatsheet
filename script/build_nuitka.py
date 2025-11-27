@@ -66,6 +66,25 @@ def clean_build():
     
     print("[✓] Cleanup complete")
 
+def ensure_data_dirs():
+    """Ensure required data directories exist"""
+    print("[2.5/4] Ensuring data directories exist...")
+    
+    data_dirs = [
+        Path("src/svg"),
+        Path("src/doc"),
+        Path("asset")
+    ]
+    
+    for dir_path in data_dirs:
+        if not dir_path.exists():
+            dir_path.mkdir(parents=True, exist_ok=True)
+            print(f"  Created: {dir_path}/")
+        else:
+            print(f"  Exists: {dir_path}/")
+    
+    print("[✓] Data directories ready")
+
 def build():
     """Run Nuitka build with maximum optimization"""
     print("[3/4] Building with Nuitka (optimized for size)...")
@@ -84,10 +103,7 @@ def build():
         # PySide6 plugin
         "--enable-plugin=pyside6",
         
-        # Include data directories
-        "--include-data-dir=src/svg=src/svg",
-        "--include-data-dir=src/doc=src/doc",
-        "--include-data-dir=asset=asset",
+        # Include data directories (only if they exist and have content)
         
         # Include required modules
         "--include-module=yaml",
@@ -141,10 +157,19 @@ def build():
         
         # Output configuration
         "--output-dir=build",
+        "--output-filename=AutoCheatsheet.exe",
         
         # Target file
         "app.py"
     ]
+    
+    # Add data directories only if they exist
+    if Path("src/svg").exists():
+        cmd.insert(-1, "--include-data-dir=src/svg=src/svg")
+    if Path("src/doc").exists():
+        cmd.insert(-1, "--include-data-dir=src/doc=src/doc")
+    if Path("asset").exists():
+        cmd.insert(-1, "--include-data-dir=asset=asset")
     
     # Remove icon parameter if icon doesn't exist
     if not Path("icon.ico").exists() and not Path("asset/icon/icon.png").exists():
@@ -162,7 +187,7 @@ def organize_output():
     print("\n[4/4] Checking build output...")
     
     # Check for onefile output
-    exe_path = Path("build/app.exe")
+    exe_path = Path("build/AutoCheatsheet.exe")
     
     if exe_path.exists():
         size_mb = exe_path.stat().st_size / (1024 * 1024)
@@ -178,13 +203,13 @@ def organize_output():
         return True
     else:
         print("\n[ERROR] Build output not found!")
-        print("Expected location: build/app.exe")
+        print("Expected location: build/AutoCheatsheet.exe")
         
         # Check alternative locations
         alt_paths = [
+            Path("AutoCheatsheet.exe"),
             Path("app.exe"),
-            Path("app.dist/app.exe"),
-            Path("build/app.onefile-build/app.exe")
+            Path("build/app.exe")
         ]
         
         for path in alt_paths:
@@ -211,6 +236,9 @@ def main():
     
     # Clean old builds
     clean_build()
+    
+    # Ensure data directories exist
+    ensure_data_dirs()
     
     # Build
     if not build():

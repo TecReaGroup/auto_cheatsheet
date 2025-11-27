@@ -1,0 +1,159 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install nuitka ordered-set zstandard pillow
+    
+    - name: Install MinGW compiler
+      run: choco install mingw -y
+    
+    - name: Determine version
+      id: version
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" == "push" ]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
+          echo "is_prerelease=false" >> $GITHUB_OUTPUT
+        else
+          VERSION="${{ inputs.version }}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "is_prerelease=${{ inputs.prerelease }}" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Build with Nuitka
+      run: python script/build_nuitka.py
+      env:
+        PYTHONIOENCODING: utf-8
+    
+    - name: Verify build output
+      run: |
+        if (!(Test-Path "build\AutoCheatsheet.exe")) {
+          Write-Error "Build failed: AutoCheatsheet.exe not found"
+          exit 1
+        }
+        $size = (Get-Item "build\AutoCheatsheet.exe").Length / 1MB
+        Write-Host "Build successful! Size: $([math]::Round($size, 2)) MB"
+    
+    - name: Create release package
+      id: package
+      shell: bash
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        PACKAGE_NAME="AutoCheatsheet_v${VERSION}"
+        
+        mkdir -p "dist/$PACKAGE_NAME"
+        cp build/AutoCheatsheet.exe "dist/$PACKAGE_NAME/AutoCheatsheet.exe"
+        mkdir -p "dist/$PACKAGE_NAME/log"
+        mkdir -p "dist/$PACKAGE_NAME/src"
+        
+        echo "Auto Cheatsheet v${VERSION}" > "dist/$PACKAGE_NAME/README.txt"
+        echo "================================" >> "dist/$PACKAGE_NAME/README.txt"
+        echo "" >> "dist/$PACKAGE_NAME/README.txt"
+        echo "Quick Start:" >> "dist/$PACKAGE_NAME/README.txt"
+        echo "1. Run AutoCheatsheet.exe" >> "dist/$PACKAGE_NAME/README.txt"
+        echo "2. The application will create necessary folders automatically" >> "dist/$PACKAGE_NAME/README.txt"
+        echo "3. Place your YAML cheatsheet files in the src/ folder" >> "dist/$PACKAGE_NAME/README.txt"
+        echo "4. Logs will be saved to the log/ folder" >> "dist/$PACKAGE_NAME/README.txt"
+        echo "" >> "dist/$PACKAGE_NAME/README.txt"
+        echo "For more information, visit:" >> "dist/$PACKAGE_NAME/README.txt"
+        echo "https://github.com/${{ github.repository }}" >> "dist/$PACKAGE_NAME/README.txt"
+        echo "" >> "dist/$PACKAGE_NAME/README.txt"
+        echo "Release Date: $(date +'%Y-%m-%d')" >> "dist/$PACKAGE_NAME/README.txt"
+        
+        cd dist
+        7z a -tzip "${PACKAGE_NAME}.zip" "$PACKAGE_NAME" -r
+        certutil -hashfile "${PACKAGE_NAME}.zip" SHA256 > "${PACKAGE_NAME}.zip.sha256"
+        
+        echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: AutoCheatsheet-v${{ steps.version.outputs.version }}
+        path: |
+          dist/AutoCheatsheet_v${{ steps.version.outputs.version }}.zip
+          dist/AutoCheatsheet_v${{ steps.version.outputs.version }}.zip.sha256
+        retention-days: 30
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.tag }}
+        name: Auto Cheatsheet v${{ steps.version.outputs.version }}
+        draft: false
+        prerelease: ${{ steps.version.outputs.is_prerelease }}
+        generate_release_notes: true
+        body: |
+          ## Auto Cheatsheet v${{ steps.version.outputs.version }}
+          
+          ### 📦 Installation
+          
+          1. Download `AutoCheatsheet_v${{ steps.version.outputs.version }}.zip`
+          2. Extract the archive
+          3. Run `AutoCheatsheet.exe`
+          
+          ### ✨ What's Included
+          
+          - **AutoCheatsheet.exe** - Main application (single executable)
+          - **log/** - Runtime logs directory
+          - **src/** - Cheatsheet files directory
+          - **README.txt** - Quick start guide
+          
+          ### 🔐 Verification
+          
+          Verify the download integrity using the provided SHA256 checksum:
+          ```bash
+          certutil -hashfile AutoCheatsheet_v${{ steps.version.outputs.version }}.zip SHA256
+          ```
+          
+          ### 📊 Build Info
+          
+          - **Build Date**: ${{ github.event.head_commit.timestamp }}
+          - **Commit**: ${{ github.sha }}
+          - **Python Version**: 3.11
+          - **Compiler**: Nuitka + MinGW
+          
+          ### 📝 Changelog
+          
+          See the full changelog below for details on what's new in this release.
+        files: |
+          dist/AutoCheatsheet_v${{ steps.version.outputs.version }}.zip
+          dist/AutoCheatsheet_v${{ steps.version.outputs.version }}.zip.sha256
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

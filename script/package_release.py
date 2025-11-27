@@ -11,9 +11,9 @@ def create_package():
     print("="*60)
     
     # Check if exe exists
-    exe_path = Path("build/app.exe")
+    exe_path = Path("build/AutoCheatsheet.exe")
     if not exe_path.exists():
-        print("Error: app.exe not found in build/ directory")
+        print("Error: AutoCheatsheet.exe not found in build/ directory")
         print("Please run the build script first: python script/build_nuitka.py")
         return False
     

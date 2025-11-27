@@ -17,6 +17,12 @@ A lightweight desktop application for viewing and managing command-line cheatshe
 
 ## Quick Start
 
+### Download Release
+
+Download the latest release from [GitHub Releases](../../releases):
+- Extract `AutoCheatsheet_vX.X.X.zip`
+- Run `AutoCheatsheet.exe`
+
 ### Running from Source
 
 ```bash
@@ -38,6 +44,17 @@ python script/package_release.py
 ```
 
 Output: `dist/AutoCheatsheet_YYYYMMDD_HHMMSS.zip` (31 MB)
+
+### Automated Releases
+
+GitHub Actions automatically builds and releases when you push a version tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+See [`.github/workflows/README.md`](.github/workflows/README.md) for details.
 
 ## Project Structure
 
